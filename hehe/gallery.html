@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Field Notes — An Ongoing Archive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Work+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#121214;
+    --ink-soft:#1b1b1f;
+    --paper:#eee9e1;
+    --paper-dim:#c9c3b8;
+    --gold:#c9a24a;
+    --line: rgba(238,233,225,0.14);
+    --line-strong: rgba(238,233,225,0.3);
+  }
+
+  *{ box-sizing:border-box; }
+
+  html{ scroll-behavior:smooth; }
+
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'Work Sans', sans-serif;
+    font-weight:400;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior:auto; }
+    *{ animation-duration:0.001ms !important; transition-duration:0.001ms !important; }
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    padding:5.5rem 6vw 3rem;
+    border-bottom:1px solid var(--line);
+    position:relative;
+  }
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    letter-spacing:0.22em;
+    text-transform:uppercase;
+    color:var(--gold);
+    display:flex;
+    align-items:center;
+    gap:0.6rem;
+    margin-bottom:1.4rem;
+  }
+  .eyebrow::before{
+    content:"";
+    width:28px;
+    height:1px;
+    background:var(--gold);
+    display:inline-block;
+  }
+
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size:clamp(2.6rem, 6vw, 5rem);
+    line-height:0.98;
+    margin:0 0 1.4rem;
+    max-width:16ch;
+    letter-spacing:-0.01em;
+  }
+  h1 em{
+    font-style:italic;
+    font-weight:300;
+    color:var(--paper-dim);
+  }
+
+  header p.sub{
+    max-width:46ch;
+    font-size:1.02rem;
+    line-height:1.65;
+    color:var(--paper-dim);
+    margin:0;
+  }
+
+  .frame-count{
+    position:absolute;
+    right:6vw;
+    bottom:3rem;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.75rem;
+    color:var(--paper-dim);
+    text-align:right;
+    line-height:1.6;
+  }
+  .frame-count span{ color:var(--gold); }
+
+  @media (max-width:720px){
+    .frame-count{ position:static; margin-top:2rem; text-align:left; }
+  }
+
+  /* ---------- Filters ---------- */
+  .filters{
+    position:sticky;
+    top:0;
+    z-index:20;
+    display:flex;
+    flex-wrap:wrap;
+    gap:0.5rem;
+    padding:1.1rem 6vw;
+    background:rgba(18,18,20,0.86);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+
+  .chip{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:0.5rem 0.95rem;
+    border:1px solid var(--line-strong);
+    border-radius:999px;
+    background:transparent;
+    color:var(--paper-dim);
+    cursor:pointer;
+    transition:all 0.2s ease;
+    white-space:nowrap;
+  }
+  .chip:hover{ border-color:var(--gold); color:var(--paper); }
+  .chip.active{
+    background:var(--gold);
+    border-color:var(--gold);
+    color:var(--ink);
+  }
+
+  /* ---------- Gallery ---------- */
+  main{ padding:2.5rem 6vw 6rem; }
+
+  .masonry{
+    column-count:1;
+    column-gap:1.1rem;
+  }
+  @media (min-width:560px){ .masonry{ column-count:2; } }
+  @media (min-width:860px){ .masonry{ column-count:3; } }
+  @media (min-width:1200px){ .masonry{ column-count:4; } }
+  @media (min-width:1600px){ .masonry{ column-count:5; } }
+
+  .tile{
+    break-inside:avoid;
+    margin-bottom:1.1rem;
+    position:relative;
+    border-radius:3px;
+    overflow:hidden;
+    background:var(--ink-soft);
+    cursor:pointer;
+    opacity:0;
+    transform:translateY(14px);
+    transition:opacity 0.6s ease, transform 0.6s ease;
+  }
+  .tile.visible{ opacity:1; transform:translateY(0); }
+  .tile.hidden-filter{ display:none; }
+
+  .tile img{
+    display:block;
+    width:100%;
+    height:auto;
+    transition:transform 0.6s cubic-bezier(.2,.7,.2,1), filter 0.5s ease;
+  }
+  .tile:hover img{ transform:scale(1.045); }
+
+  .tile-overlay{
+    position:absolute;
+    inset:0;
+    background:linear-gradient(180deg, rgba(10,10,10,0.5) 0%, transparent 22%, transparent 60%, rgba(10,10,10,0.88) 100%);
+    opacity:0;
+    transition:opacity 0.25s ease;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    padding:0.7rem 0.7rem 0.9rem;
+    pointer-events:none;
+  }
+  .tile:hover .tile-overlay{ opacity:1; }
+  .tile-overlay > *{ pointer-events:auto; }
+
+  .tile-top-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+  }
+
+  .save-btn{
+    font-family:'Work Sans', sans-serif;
+    font-weight:600;
+    font-size:0.8rem;
+    background:var(--gold);
+    color:var(--ink);
+    border:none;
+    padding:0.55rem 1.1rem;
+    border-radius:999px;
+    cursor:pointer;
+    box-shadow:0 6px 16px rgba(0,0,0,0.35);
+    transition:transform 0.15s ease, background 0.2s ease;
+  }
+  .save-btn:hover{ transform:translateY(-1px); background:#dcb45a; }
+  .save-btn.saved{ background:var(--paper); }
+  .save-btn.saved::before{ content:"✓ "; }
+
+  .icon-btn{
+    width:34px;
+    height:34px;
+    border-radius:50%;
+    border:none;
+    background:rgba(18,18,20,0.7);
+    color:var(--paper);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    font-size:0.95rem;
+    backdrop-filter:blur(4px);
+    transition:background 0.2s ease;
+  }
+  .icon-btn:hover{ background:var(--gold); color:var(--ink); }
+
+  .tile-bottom-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:0.5rem;
+  }
+
+  .tile-meta{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.68rem;
+    letter-spacing:0.04em;
+    color:var(--paper);
+  }
+  .tile-meta .num{ color:var(--gold); }
+  .tile-meta .cat{
+    display:block;
+    margin-top:0.25rem;
+    color:var(--paper-dim);
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    font-size:0.62rem;
+  }
+
+  .sentinel{
+    height:1px;
+  }
+
+  .loader-row{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:0.6rem;
+    padding:2.5rem 0;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--paper-dim);
+  }
+  .spinner{
+    width:14px;
+    height:14px;
+    border-radius:50%;
+    border:2px solid var(--line-strong);
+    border-top-color:var(--gold);
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* ---------- Pin detail modal ---------- */
+  .pin-scrim{
+    position:fixed;
+    inset:0;
+    background:rgba(8,8,9,0.92);
+    z-index:100;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.3s ease;
+    overflow-y:auto;
+    padding:3.5vh 3vw 6vh;
+  }
+  .pin-scrim.open{ opacity:1; pointer-events:auto; }
+
+  .pin-topbar{
+    max-width:1180px;
+    margin:0 auto 1rem;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .pin-topbar .icon-btn{ background:var(--ink-soft); border:1px solid var(--line-strong); }
+  .pin-topbar-right{ display:flex; gap:0.55rem; align-items:center; }
+
+  .pin-card{
+    max-width:1180px;
+    margin:0 auto;
+    background:var(--ink-soft);
+    border:1px solid var(--line);
+    border-radius:22px;
+    overflow:hidden;
+    display:grid;
+    grid-template-columns:1.35fr 1fr;
+    min-height:0;
+  }
+  @media (max-width:860px){
+    .pin-card{ grid-template-columns:1fr; }
+  }
+
+  .pin-media{
+    background:#050506;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    max-height:82vh;
+    overflow:hidden;
+  }
+  .pin-media img{
+    width:100%;
+    height:100%;
+    max-height:82vh;
+    object-fit:contain;
+    display:block;
+  }
+
+  .pin-side{
+    padding:1.8rem 1.9rem 1.6rem;
+    display:flex;
+    flex-direction:column;
+    gap:1.4rem;
+    overflow-y:auto;
+    max-height:82vh;
+  }
+
+  .pin-side-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:1rem;
+  }
+
+  .pin-title{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size:1.5rem;
+    line-height:1.2;
+    margin:0 0 0.4rem;
+  }
+  .pin-frame-tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    letter-spacing:0.08em;
+    color:var(--gold);
+  }
+
+  .pin-actions{ display:flex; gap:0.5rem; align-items:center; flex-shrink:0; }
+  .pin-actions .save-btn{
+    padding:0.65rem 1.35rem;
+    font-size:0.85rem;
+    box-shadow:none;
+  }
+
+  .pin-desc{
+    font-size:0.95rem;
+    line-height:1.65;
+    color:var(--paper-dim);
+    margin:0;
+  }
+
+  .pin-stats{
+    display:flex;
+    gap:1.4rem;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    color:var(--paper-dim);
+    letter-spacing:0.04em;
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    padding:0.9rem 0;
+  }
+  .pin-stats b{ color:var(--paper); font-weight:500; }
+
+  .pin-more-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.68rem;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--paper-dim);
+    margin:0 0 0.2rem;
+  }
+
+  .pin-more-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0.6rem;
+  }
+  .pin-more-tile{
+    border-radius:10px;
+    overflow:hidden;
+    cursor:pointer;
+    position:relative;
+    background:var(--ink);
+    aspect-ratio:1/1;
+  }
+  .pin-more-tile img{
+    width:100%; height:100%; object-fit:cover; display:block;
+    transition:transform 0.35s ease;
+  }
+  .pin-more-tile:hover img{ transform:scale(1.06); }
+
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:2.4rem;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.75rem;
+    letter-spacing:0.04em;
+    padding:0.8rem 1.4rem;
+    border-radius:999px;
+    box-shadow:0 12px 30px rgba(0,0,0,0.4);
+    z-index:200;
+    opacity:0;
+    pointer-events:none;
+    transition:all 0.3s ease;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  button:focus-visible, .chip:focus-visible{
+    outline:2px solid var(--gold);
+    outline-offset:2px;
+  }
+
+  footer{
+    padding:2.5rem 6vw 3.5rem;
+    border-top:1px solid var(--line);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.7rem;
+    color:var(--paper-dim);
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:0.8rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Archive No. 004 · Endless Feed</div>
+  <h1>Field Notes,<br><em>an archive with no bottom.</em></h1>
+  <p class="sub">A working contact sheet of frames pulled from the field — texture, structure, light. Scroll for more, filter by subject, or click any frame to open it, save it, or see more like it.</p>
+  <div class="frame-count">FRAMES VIEWED — <span id="frameCount">00</span><br>SAVED — <span id="savedCount">00</span></div>
+</header>
+
+<nav class="filters" id="filters"></nav>
+
+<main>
+  <div class="masonry" id="masonry"></div>
+  <div class="loader-row"><span class="spinner"></span> Loading more frames</div>
+  <div class="sentinel" id="sentinel"></div>
+</main>
+
+<footer>
+  <span>Field Notes Archive — a running visual log</span>
+  <span id="footerCount">00 frames on view</span>
+</footer>
+
+<div class="pin-scrim" id="pinScrim">
+  <div class="pin-topbar">
+    <button class="icon-btn" id="pinClose" aria-label="Close">✕</button>
+    <div class="pin-topbar-right">
+      <button class="icon-btn" id="pinDownload" title="Download" aria-label="Download">⭳</button>
+      <button class="icon-btn" id="pinShare" title="Share" aria-label="Share">↗</button>
+      <button class="icon-btn" id="pinMore" title="More options" aria-label="More options">⋯</button>
+    </div>
+  </div>
+  <div class="pin-card">
+    <div class="pin-media"><img id="pinImg" src="" alt=""></div>
+    <div class="pin-side">
+      <div class="pin-side-head">
+        <div>
+          <p class="pin-frame-tag" id="pinFrameTag">IMG_000</p>
+          <h2 class="pin-title" id="pinTitle">Category</h2>
+        </div>
+        <div class="pin-actions">
+          <button class="save-btn" id="pinSaveBtn">Save</button>
+        </div>
+      </div>
+      <p class="pin-desc" id="pinDesc"></p>
+      <div class="pin-stats">
+        <span><b id="pinDim">0000×0000</b> resolution</span>
+        <span><b id="pinSaves">0</b> saves</span>
+      </div>
+      <div>
+        <p class="pin-more-label">More like this</p>
+        <div class="pin-more-grid" id="pinMoreGrid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const CATEGORIES = ["Nature","Urban","Portrait","Abstract","Architecture","Travel"];
+  const DESCRIPTORS = {
+    Nature: ["Undergrowth after rain","Ridge line at first light","Moss, stone, and quiet","Canopy break, low sun"],
+    Urban: ["Crosswalk, second take","Stairwell geometry","Corner store at dusk","Platform, morning rush"],
+    Portrait: ["Study in natural light","Half-turn, window light","Held gaze, quiet room","Profile, late afternoon"],
+    Abstract: ["Texture study, close crop","Color field, no subject","Grain and shadow","Pattern interrupted"],
+    Architecture: ["Facade, midday shadow","Stair detail","Concrete and light","Interior, single window"],
+    Travel: ["Roadside, somewhere south","Departure gate","Market, early hours","Coastline, overcast"]
+  };
+
+  // Deterministic pseudo-random so layout stays stable per session
+  function seededRandom(seed){
+    let x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+  }
+
+  const ASPECTS = [
+    [4,5],[3,4],[1,1],[5,4],[4,3],[2,3],[16,10],[3,5],[5,3],[9,16]
+  ];
+
+  function buildFrame(index){
+    const cat = CATEGORIES[Math.floor(seededRandom(index*7.3)*CATEGORIES.length)];
+    const aspect = ASPECTS[Math.floor(seededRandom(index*3.1)*ASPECTS.length)];
+    const baseW = 600;
+    const h = Math.round(baseW * (aspect[1]/aspect[0]));
+    const seed = "fieldnotes-" + index;
+    const descList = DESCRIPTORS[cat];
+    const desc = descList[Math.floor(seededRandom(index*5.9)*descList.length)];
+    const saves = 40 + Math.floor(seededRandom(index*2.4)*2400);
+    return {
+      id: index,
+      num: "IMG_" + String(index).padStart(3,"0"),
+      category: cat,
+      title: desc,
+      w: baseW,
+      h: h,
+      saves: saves,
+      src: `https://picsum.photos/seed/${seed}/${baseW}/${h}`,
+      full: `https://picsum.photos/seed/${seed}/1400/${Math.round(1400*(aspect[1]/aspect[0]))}`
+    };
+  }
+
+  const frameCache = new Map();
+  function getFrame(index){
+    if(!frameCache.has(index)) frameCache.set(index, buildFrame(index));
+    return frameCache.get(index);
+  }
+
+  let nextIndex = 1;
+  let renderedCount = 0;
+  let activeFilter = "All";
+  let loading = false;
+  const BATCH = 16;
+  const savedIds = new Set();
+
+  const masonry = document.getElementById('masonry');
+  const filtersEl = document.getElementById('filters');
+  const frameCountEl = document.getElementById('frameCount');
+  const savedCountEl = document.getElementById('savedCount');
+  const footerCountEl = document.getElementById('footerCount');
+  const sentinel = document.getElementById('sentinel');
+  const loaderRow = document.querySelector('.loader-row');
+  const toast = document.getElementById('toast');
+
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=> toast.classList.remove('show'), 1800);
+  }
+
+  // Filters
+  const allCats = ["All", ...CATEGORIES];
+  allCats.forEach(cat=>{
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (cat==='All' ? ' active' : '');
+    btn.textContent = cat;
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = cat;
+      applyFilter();
+    });
+    filtersEl.appendChild(btn);
+  });
+
+  const revealObserver = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        entry.target.classList.add('visible');
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold:0.08 });
+
+  function toggleSave(id, btn){
+    if(savedIds.has(id)){
+      savedIds.delete(id);
+      btn.classList.remove('saved');
+      btn.textContent = 'Save';
+    } else {
+      savedIds.add(id);
+      btn.classList.add('saved');
+      btn.textContent = 'Saved';
+      showToast('Saved to your board');
+    }
+    savedCountEl.textContent = String(savedIds.size).padStart(2,'0');
+  }
+
+  function renderTile(frame){
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.dataset.category = frame.category;
+    tile.dataset.id = frame.id;
+
+    tile.innerHTML = `
+      <img src="${frame.src}" alt="${frame.category} photograph, frame ${frame.num}" loading="lazy" width="${frame.w}" height="${frame.h}">
+      <div class="tile-overlay">
+        <div class="tile-top-row">
+          <button class="icon-btn tile-more" title="More options" aria-label="More options">⋯</button>
+          <button class="save-btn tile-save">Save</button>
+        </div>
+        <div class="tile-bottom-row">
+          <div class="tile-meta">
+            <span class="num">${frame.num}</span> · ${frame.w}×${frame.h}
+            <span class="cat">${frame.category}</span>
+          </div>
+          <button class="icon-btn tile-open" title="Open" aria-label="Open frame">↗</button>
+        </div>
+      </div>
+    `;
+
+    tile.querySelector('.tile-save').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      toggleSave(frame.id, e.currentTarget);
+    });
+    tile.querySelector('.tile-more').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      showToast('More options coming soon');
+    });
+    tile.querySelector('.tile-open').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      openPin(frame.id);
+    });
+    tile.addEventListener('click', ()=> openPin(frame.id));
+
+    masonry.appendChild(tile);
+    revealObserver.observe(tile);
+  }
+
+  function applyFilter(){
+    document.querySelectorAll('.tile').forEach(tile=>{
+      const show = activeFilter === 'All' || tile.dataset.category === activeFilter;
+      tile.classList.toggle('hidden-filter', !show);
+    });
+    updateCounts();
+  }
+
+  function updateCounts(){
+    const visible = document.querySelectorAll('.tile:not(.hidden-filter)').length;
+    frameCountEl.textContent = String(renderedCount).padStart(2,"0");
+    footerCountEl.textContent = String(visible).padStart(2,"0") + " frames on view";
+  }
+
+  function loadBatch(){
+    if(loading) return;
+    loading = true;
+    loaderRow.style.visibility = 'visible';
+    // simulate a brief network pause, like a real feed fetching the next page
+    setTimeout(()=>{
+      for(let i=0;i<BATCH;i++){
+        renderTile(getFrame(nextIndex));
+        nextIndex++;
+        renderedCount++;
+      }
+      applyFilter();
+      loading = false;
+      loaderRow.style.visibility = 'hidden';
+    }, 350);
+  }
+
+  loaderRow.style.visibility = 'hidden';
+
+  const scrollObserver = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting) loadBatch();
+    });
+  }, { rootMargin: '600px 0px 600px 0px' });
+  scrollObserver.observe(sentinel);
+
+  loadBatch();
+
+  // ---------- Pin detail modal ----------
+  const pinScrim = document.getElementById('pinScrim');
+  const pinImg = document.getElementById('pinImg');
+  const pinFrameTag = document.getElementById('pinFrameTag');
+  const pinTitle = document.getElementById('pinTitle');
+  const pinDesc = document.getElementById('pinDesc');
+  const pinDim = document.getElementById('pinDim');
+  const pinSaves = document.getElementById('pinSaves');
+  const pinSaveBtn = document.getElementById('pinSaveBtn');
+  const pinMoreGrid = document.getElementById('pinMoreGrid');
+  let currentPinId = null;
+
+  function renderPinSave(id){
+    if(savedIds.has(id)){
+      pinSaveBtn.classList.add('saved');
+      pinSaveBtn.textContent = 'Saved';
+    } else {
+      pinSaveBtn.classList.remove('saved');
+      pinSaveBtn.textContent = 'Save';
+    }
+  }
+
+  function openPin(id){
+    currentPinId = id;
+    const frame = getFrame(id);
+    pinImg.src = frame.full;
+    pinImg.alt = frame.title + ", " + frame.category + " photograph";
+    pinFrameTag.textContent = frame.num + " · " + frame.category.toUpperCase();
+    pinTitle.textContent = frame.title;
+    pinDesc.textContent = `A ${frame.category.toLowerCase()} frame from the ongoing archive, shot on a rolling contact sheet. Logged as ${frame.num}, no further notes attached.`;
+    pinDim.textContent = (frame.w*2) + "×" + (frame.h*2);
+    pinSaves.textContent = (frame.saves + (savedIds.has(id)?1:0)).toLocaleString();
+    renderPinSave(id);
+
+    // Build "more like this" from same category
+    pinMoreGrid.innerHTML = '';
+    let added = 0;
+    let probe = 1;
+    while(added < 4 && probe < 400){
+      const f = getFrame(probe);
+      if(f.category === frame.category && f.id !== id){
+        const div = document.createElement('div');
+        div.className = 'pin-more-tile';
+        div.innerHTML = `<img src="${f.src}" alt="${f.category} photograph, frame ${f.num}" loading="lazy">`;
+        div.addEventListener('click', ()=> openPin(f.id));
+        pinMoreGrid.appendChild(div);
+        added++;
+      }
+      probe++;
+    }
+
+    pinScrim.classList.add('open');
+    pinScrim.scrollTop = 0;
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closePin(){
+    pinScrim.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  pinSaveBtn.addEventListener('click', ()=>{
+    if(currentPinId == null) return;
+    const wasSaved = savedIds.has(currentPinId);
+    if(wasSaved){ savedIds.delete(currentPinId); showToast('Removed from board'); }
+    else { savedIds.add(currentPinId); showToast('Saved to your board'); }
+    savedCountEl.textContent = String(savedIds.size).padStart(2,'0');
+    renderPinSave(currentPinId);
+    // sync the matching grid tile if present
+    const gridBtn = document.querySelector(`.tile[data-id="${currentPinId}"] .tile-save`);
+    if(gridBtn){
+      gridBtn.classList.toggle('saved', !wasSaved);
+      gridBtn.textContent = !wasSaved ? 'Saved' : 'Save';
+    }
+    const frame = getFrame(currentPinId);
+    pinSaves.textContent = (frame.saves + (savedIds.has(currentPinId)?1:0)).toLocaleString();
+  });
+
+  document.getElementById('pinClose').addEventListener('click', closePin);
+  document.getElementById('pinDownload').addEventListener('click', ()=> showToast('Preparing download…'));
+  document.getElementById('pinShare').addEventListener('click', ()=> showToast('Link copied'));
+  document.getElementById('pinMore').addEventListener('click', ()=> showToast('More options coming soon'));
+  pinScrim.addEventListener('click', (e)=>{ if(e.target === pinScrim) closePin(); });
+
+  document.addEventListener('keydown', (e)=>{
+    if(!pinScrim.classList.contains('open')) return;
+    if(e.key === 'Escape') closePin();
+  });
+})();
+</script>
+
+</body>
+</html>
